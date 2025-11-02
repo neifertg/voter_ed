@@ -48,9 +48,10 @@ export default function ResultsPage() {
     try {
       // Get user data from localStorage
       const zipCode = localStorage.getItem('votered_zip_code');
+      const address = localStorage.getItem('votered_address');
       const responsesData = localStorage.getItem('votered_complete_responses');
 
-      if (!zipCode || !responsesData) {
+      if ((!zipCode && !address) || !responsesData) {
         router.push('/onboarding/zip-code');
         return;
       }
@@ -64,11 +65,15 @@ export default function ResultsPage() {
         setIssues(issuesData.issues);
       }
 
-      // Fetch candidate matches
+      // Fetch candidate matches (using address if available, otherwise zip code)
       const matchResponse = await fetch('/api/match-candidates', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ zipCode, responses }),
+        body: JSON.stringify({
+          zipCode: zipCode || '',
+          address: address || zipCode,
+          responses,
+        }),
       });
 
       const matchData = await matchResponse.json();

@@ -4,21 +4,11 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
-// Valid zip codes for our MVP
-const VALID_ZIP_CODES = [
-  '20147', '20148', '20164', '20165', // Loudoun County, VA
-  '28092', '28090', // Lincoln County, NC
-  '84003', '84005', '84043', // Lehi, UT
-  '77449', '77450', '77493', // Katy, TX
-  '08204', '08210', '08260', // Cape May County, NJ
-  '67002', // Andover, KS
-  '49614', // Bear Lake, MI
-];
-
 export default function ZipCodePage() {
-  const [zipCode, setZipCode] = useState('');
+  const [address, setAddress] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [useZipOnly, setUseZipOnly] = useState(false);
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -26,27 +16,46 @@ export default function ZipCodePage() {
     setError('');
     setIsLoading(true);
 
-    // Validate zip code format
-    if (!/^\d{5}$/.test(zipCode)) {
-      setError('Please enter a valid 5-digit zip code');
+    const trimmedAddress = address.trim();
+
+    if (!trimmedAddress) {
+      setError('Please enter your address');
       setIsLoading(false);
       return;
     }
 
-    // Check if zip code is in our coverage area
-    if (!VALID_ZIP_CODES.includes(zipCode)) {
-      setError(
-        'Sorry, VoterEd is not yet available in your area. Currently serving: Loudoun County VA, Lincoln County NC, Lehi UT, Katy TX, Cape May County NJ, Andover KS, and Bear Lake MI. Check back soon for expanded coverage!'
-      );
-      setIsLoading(false);
+    // If user just entered a zip code, validate it
+    if (/^\d{5}$/.test(trimmedAddress)) {
+      // Store zip code for backward compatibility
+      localStorage.setItem('votered_zip_code', trimmedAddress);
+      localStorage.setItem('votered_address', trimmedAddress);
+      router.push('/onboarding/quiz');
       return;
     }
 
-    // Store zip code in localStorage
-    localStorage.setItem('votered_zip_code', zipCode);
+    // Validate address with Google Civic API
+    try {
+      const response = await fetch(`/api/validate-address?address=${encodeURIComponent(trimmedAddress)}`);
+      const data = await response.json();
 
-    // Navigate to quiz
-    router.push('/onboarding/quiz');
+      if (data.success && data.normalizedAddress) {
+        // Store both full address and extracted zip code
+        localStorage.setItem('votered_address', data.normalizedAddress);
+        if (data.zipCode) {
+          localStorage.setItem('votered_zip_code', data.zipCode);
+        }
+
+        // Navigate to quiz
+        router.push('/onboarding/quiz');
+      } else {
+        setError(data.error || 'Unable to validate address. Please check and try again.');
+        setIsLoading(false);
+      }
+    } catch (err) {
+      console.error('Error validating address:', err);
+      setError('Error validating address. Please try again.');
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -107,30 +116,33 @@ export default function ZipCodePage() {
               Where do you live?
             </h1>
             <p className="text-lg text-slate-600 mb-8">
-              We'll use your zip code to show you candidates running in your area.
+              We'll use your address to show you the exact candidates and ballot measures you'll see on election day.
               Your information is never stored or shared.
             </p>
 
             <form onSubmit={handleSubmit} className="space-y-6">
               <div>
                 <label
-                  htmlFor="zipCode"
+                  htmlFor="address"
                   className="block text-sm font-medium text-slate-900 mb-2"
                 >
-                  Zip Code
+                  Your Address
                 </label>
                 <input
-                  id="zipCode"
+                  id="address"
                   type="text"
-                  inputMode="numeric"
-                  pattern="\d{5}"
-                  maxLength={5}
-                  value={zipCode}
-                  onChange={(e) => setZipCode(e.target.value.replace(/\D/g, ''))}
-                  placeholder="Enter your 5-digit zip code"
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  placeholder={useZipOnly ? "Enter zip code (e.g., 20147)" : "123 Main St, City, State ZIP"}
                   className="w-full px-4 py-3 text-lg border border-slate-300 rounded-lg focus:ring-2 focus:ring-patriot-blue-500 focus:border-patriot-blue-500 outline-none transition-all"
                   required
                 />
+                <p className="mt-2 text-sm text-slate-500">
+                  {useZipOnly
+                    ? "Enter your 5-digit zip code"
+                    : "For best results, include your street address. You can also just enter a zip code."
+                  }
+                </p>
               </div>
 
               {error && (
@@ -141,11 +153,18 @@ export default function ZipCodePage() {
 
               <button
                 type="submit"
-                disabled={isLoading || zipCode.length !== 5}
+                disabled={isLoading || !address.trim()}
                 className="w-full bg-patriot-red-600 hover:bg-patriot-red-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-semibold text-lg px-6 py-4 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200"
               >
-                {isLoading ? 'Checking...' : 'Continue to Quiz'}
+                {isLoading ? 'Validating Address...' : 'Continue to Quiz'}
               </button>
+
+              <div className="flex items-center justify-center gap-2 text-sm">
+                <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+                <span className="text-slate-500">Your address is used only to find your ballot and is not stored</span>
+              </div>
             </form>
 
             <div className="mt-8 pt-8 border-t border-slate-200">

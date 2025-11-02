@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import { NextRequest, NextResponse } from 'next/server';
+import { fetchCandidatesForAddress } from '@/lib/googleCivic';
 
 interface UserResponse {
   issueId: string;
@@ -13,12 +14,14 @@ interface CandidatePosition {
 }
 
 interface Candidate {
-  id: string;
+  id?: string;
   name: string;
   office: string;
   party: string;
-  bio: string;
-  zip_codes: string[];
+  bio?: string;
+  zip_codes?: string[];
+  candidateUrl?: string;
+  source: 'google_civic' | 'database' | 'hybrid';
 }
 
 interface CandidateWithMatch extends Candidate {
@@ -31,34 +34,85 @@ interface CandidateWithMatch extends Candidate {
     importance: number;
     difference: number;
   }[];
+  hasPositionData: boolean;
 }
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { zipCode, responses } = body as { zipCode: string; responses: UserResponse[] };
+    const { zipCode, responses, address } = body as {
+      zipCode: string;
+      address?: string;
+      responses: UserResponse[];
+    };
 
-    if (!zipCode || !responses || responses.length === 0) {
+    if (!responses || responses.length === 0) {
       return NextResponse.json(
         { success: false, error: 'Missing required parameters' },
         { status: 400 }
       );
     }
 
-    // Fetch candidates for the given zip code
-    const { data: candidates, error: candidatesError } = await supabase
-      .from('candidates')
-      .select('*')
-      .contains('zip_codes', [zipCode]);
+    const searchAddress = address || zipCode;
+    let allCandidates: Candidate[] = [];
 
-    if (candidatesError) {
-      return NextResponse.json(
-        { success: false, error: candidatesError.message },
-        { status: 500 }
-      );
+    // Try to fetch from Google Civic API first
+    const civicData = await fetchCandidatesForAddress(searchAddress);
+
+    if (civicData?.contests) {
+      // Process Google Civic API candidates
+      for (const contest of civicData.contests) {
+        // Only include local/state races (exclude federal)
+        const isLocalOrState = !contest.level?.includes('country');
+
+        if (isLocalOrState && contest.candidates) {
+          for (const civicCandidate of contest.candidates) {
+            // Try to find matching candidate in database
+            const { data: dbCandidates } = await supabase
+              .from('candidates')
+              .select('*')
+              .ilike('name', `%${civicCandidate.name}%`)
+              .ilike('office', `%${contest.office}%`)
+              .limit(1);
+
+            const dbMatch = dbCandidates?.[0];
+
+            allCandidates.push({
+              id: dbMatch?.id,
+              name: civicCandidate.name,
+              office: contest.office,
+              party: civicCandidate.party || dbMatch?.party || 'Unknown',
+              bio: dbMatch?.bio,
+              candidateUrl: civicCandidate.candidateUrl || dbMatch?.website_url,
+              zip_codes: dbMatch?.zip_codes,
+              source: dbMatch ? 'hybrid' : 'google_civic',
+            });
+          }
+        }
+      }
     }
 
-    if (!candidates || candidates.length === 0) {
+    // Fallback: fetch from database if no Civic API data
+    if (allCandidates.length === 0 && zipCode) {
+      const { data: dbCandidates, error: candidatesError } = await supabase
+        .from('candidates')
+        .select('*')
+        .contains('zip_codes', [zipCode]);
+
+      if (candidatesError) {
+        return NextResponse.json(
+          { success: false, error: candidatesError.message },
+          { status: 500 }
+        );
+      }
+
+      allCandidates = (dbCandidates || []).map(c => ({
+        ...c,
+        source: 'database' as const,
+      }));
+    }
+
+    if (allCandidates.length === 0) {
       return NextResponse.json({
         success: true,
         matches: [],
@@ -66,25 +120,31 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Fetch all candidate positions
-    const candidateIds = candidates.map((c: Candidate) => c.id);
-    const { data: candidatePositions, error: positionsError } = await supabase
-      .from('candidate_positions')
-      .select('candidate_id, issue_id, position')
-      .in('candidate_id', candidateIds);
+    // Fetch positions for candidates that have database IDs
+    const candidateIds = allCandidates.filter(c => c.id).map(c => c.id);
+    let candidatePositions: CandidatePosition[] = [];
 
-    if (positionsError) {
-      return NextResponse.json(
-        { success: false, error: positionsError.message },
-        { status: 500 }
-      );
+    if (candidateIds.length > 0) {
+      const { data, error: positionsError } = await supabase
+        .from('candidate_positions')
+        .select('candidate_id, issue_id, position')
+        .in('candidate_id', candidateIds as string[]);
+
+      if (positionsError) {
+        return NextResponse.json(
+          { success: false, error: positionsError.message },
+          { status: 500 }
+        );
+      }
+
+      candidatePositions = data || [];
     }
 
     // Calculate match scores for each candidate
-    const candidatesWithMatches: CandidateWithMatch[] = candidates.map((candidate: Candidate) => {
-      const candidateIssuePositions = candidatePositions?.filter(
-        (cp: { candidate_id: string }) => cp.candidate_id === candidate.id
-      ) || [];
+    const candidatesWithMatches: CandidateWithMatch[] = allCandidates.map((candidate: Candidate) => {
+      const candidateIssuePositions = candidate.id
+        ? candidatePositions.filter(cp => cp.candidate_id === candidate.id)
+        : [];
 
       // Create a map of candidate positions by issue
       const positionMap = new Map<string, number>();
@@ -135,6 +195,7 @@ export async function POST(request: NextRequest) {
         matchScore,
         matchPercentage: Math.round(matchScore),
         agreementDetails,
+        hasPositionData: candidateIssuePositions.length > 0,
       };
     });
 
