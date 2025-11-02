@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
@@ -9,7 +9,61 @@ export default function ZipCodePage() {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [useZipOnly, setUseZipOnly] = useState(false);
+  const [autocompleteLoaded, setAutocompleteLoaded] = useState(false);
   const router = useRouter();
+  const inputRef = useRef<HTMLInputElement>(null);
+  const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
+
+  // Load Google Places API
+  useEffect(() => {
+    // Don't load if in zip-only mode
+    if (useZipOnly) {
+      setAutocompleteLoaded(false);
+      return;
+    }
+
+    // Check if already loaded
+    if (window.google?.maps?.places) {
+      initAutocomplete();
+      return;
+    }
+
+    // Load the script
+    const script = document.createElement('script');
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GOOGLE_CIVIC_API_KEY || ''}&libraries=places`;
+    script.async = true;
+    script.defer = true;
+    script.onload = () => {
+      setAutocompleteLoaded(true);
+      initAutocomplete();
+    };
+    document.head.appendChild(script);
+
+    return () => {
+      // Cleanup if needed
+      if (autocompleteRef.current) {
+        google.maps.event.clearInstanceListeners(autocompleteRef.current);
+      }
+    };
+  }, [useZipOnly]);
+
+  const initAutocomplete = () => {
+    if (!inputRef.current || autocompleteRef.current) return;
+
+    autocompleteRef.current = new google.maps.places.Autocomplete(inputRef.current, {
+      types: ['address'],
+      componentRestrictions: { country: 'us' },
+      fields: ['address_components', 'formatted_address'],
+    });
+
+    autocompleteRef.current.addListener('place_changed', () => {
+      const place = autocompleteRef.current?.getPlace();
+      if (place?.formatted_address) {
+        setAddress(place.formatted_address);
+        setError('');
+      }
+    });
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -19,7 +73,7 @@ export default function ZipCodePage() {
     const trimmedAddress = address.trim();
 
     if (!trimmedAddress) {
-      setError('Please enter your address');
+      setError('Please enter your address or zip code');
       setIsLoading(false);
       return;
     }
@@ -48,12 +102,15 @@ export default function ZipCodePage() {
         // Navigate to quiz
         router.push('/onboarding/quiz');
       } else {
-        setError(data.error || 'Unable to validate address. Please check and try again.');
+        // If validation fails, suggest using zip code instead
+        setError(
+          data.error || 'Unable to validate full address. Try entering just your 5-digit zip code instead.'
+        );
         setIsLoading(false);
       }
     } catch (err) {
       console.error('Error validating address:', err);
-      setError('Error validating address. Please try again.');
+      setError('Error validating address. Please try entering just your zip code.');
       setIsLoading(false);
     }
   };
@@ -121,33 +178,107 @@ export default function ZipCodePage() {
             </p>
 
             <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Input Mode Toggle */}
+              <div className="flex items-center justify-center gap-2 p-1 bg-slate-100 rounded-lg w-fit mx-auto">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setUseZipOnly(false);
+                    setAddress('');
+                    setError('');
+                  }}
+                  className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                    !useZipOnly
+                      ? 'bg-white text-patriot-blue-700 shadow-sm'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  Full Address
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setUseZipOnly(true);
+                    setAddress('');
+                    setError('');
+                  }}
+                  className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                    useZipOnly
+                      ? 'bg-white text-patriot-blue-700 shadow-sm'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  Zip Code Only
+                </button>
+              </div>
+
               <div>
                 <label
                   htmlFor="address"
                   className="block text-sm font-medium text-slate-900 mb-2"
                 >
-                  Your Address
+                  {useZipOnly ? 'Your Zip Code' : 'Your Address'}
                 </label>
-                <input
-                  id="address"
-                  type="text"
-                  value={address}
-                  onChange={(e) => setAddress(e.target.value)}
-                  placeholder={useZipOnly ? "Enter zip code (e.g., 20147)" : "123 Main St, City, State ZIP"}
-                  className="w-full px-4 py-3 text-lg border border-slate-300 rounded-lg focus:ring-2 focus:ring-patriot-blue-500 focus:border-patriot-blue-500 outline-none transition-all"
-                  required
-                />
+                <div className="relative">
+                  <input
+                    ref={inputRef}
+                    id="address"
+                    type="text"
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
+                    placeholder={useZipOnly ? "e.g., 20147" : "Start typing your address..."}
+                    className="w-full px-4 py-3 text-lg border border-slate-300 rounded-lg focus:ring-2 focus:ring-patriot-blue-500 focus:border-patriot-blue-500 outline-none transition-all"
+                    required
+                  />
+                  {!useZipOnly && (
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                      <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                      </svg>
+                    </div>
+                  )}
+                </div>
                 <p className="mt-2 text-sm text-slate-500">
-                  {useZipOnly
-                    ? "Enter your 5-digit zip code"
-                    : "For best results, include your street address. You can also just enter a zip code."
-                  }
+                  {useZipOnly ? (
+                    'Enter your 5-digit zip code'
+                  ) : (
+                    <>
+                      Start typing and select from suggestions.
+                      <button
+                        type="button"
+                        onClick={() => setUseZipOnly(true)}
+                        className="ml-1 text-patriot-blue-600 hover:underline font-medium"
+                      >
+                        Or just use your zip code
+                      </button>
+                    </>
+                  )}
                 </p>
               </div>
 
               {error && (
-                <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-                  <p className="text-sm text-red-800">{error}</p>
+                <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                  <div className="flex gap-3">
+                    <svg className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    <div>
+                      <p className="text-sm font-medium text-amber-900 mb-1">{error}</p>
+                      {!useZipOnly && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setUseZipOnly(true);
+                            setError('');
+                            setAddress('');
+                          }}
+                          className="text-sm text-patriot-blue-600 hover:underline font-medium"
+                        >
+                          Switch to zip code entry
+                        </button>
+                      )}
+                    </div>
+                  </div>
                 </div>
               )}
 

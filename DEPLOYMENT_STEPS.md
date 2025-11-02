@@ -7,7 +7,10 @@ Your hybrid system is ready to deploy! Here's what you need to do:
 Your `.env.local` file now has:
 ```
 GOOGLE_CIVIC_API_KEY=AIzaSyCwJs1K57K4WlX0akHpwF_n9yO-X9hrNj4
+NEXT_PUBLIC_GOOGLE_CIVIC_API_KEY=AIzaSyCwJs1K57K4WlX0akHpwF_n9yO-X9hrNj4
 ```
+
+Note: The same API key is used for both server-side and client-side operations. The `NEXT_PUBLIC_` prefix makes it available to the browser for the Google Places Autocomplete feature.
 
 ## 🚀 Deploy to Vercel
 
@@ -16,13 +19,20 @@ GOOGLE_CIVIC_API_KEY=AIzaSyCwJs1K57K4WlX0akHpwF_n9yO-X9hrNj4
 1. Go to https://vercel.com/dashboard
 2. Select your VoterEd project
 3. Go to **Settings** → **Environment Variables**
-4. Click **Add New**
-5. Enter:
+4. Click **Add New** and add BOTH variables:
+
+   **First variable:**
    - **Name**: `GOOGLE_CIVIC_API_KEY`
    - **Value**: `AIzaSyCwJs1K57K4WlX0akHpwF_n9yO-X9hrNj4`
    - **Environment**: Select "Production", "Preview", and "Development"
-6. Click **Save**
-7. Go to **Deployments** → Click the 3 dots on latest → **Redeploy**
+
+   **Second variable:**
+   - **Name**: `NEXT_PUBLIC_GOOGLE_CIVIC_API_KEY`
+   - **Value**: `AIzaSyCwJs1K57K4WlX0akHpwF_n9yO-X9hrNj4`
+   - **Environment**: Select "Production", "Preview", and "Development"
+
+5. Click **Save** for both
+6. Go to **Deployments** → Click the 3 dots on latest → **Redeploy**
 
 ### Option 2: Command Line
 
@@ -30,12 +40,15 @@ GOOGLE_CIVIC_API_KEY=AIzaSyCwJs1K57K4WlX0akHpwF_n9yO-X9hrNj4
 # From your project directory
 cd "C:\Users\Seth Neifert\Documents\GitHub\VoterEd"
 
-# Set the environment variable (copy/paste the whole command)
+# Set the environment variables (copy/paste the whole commands)
 echo "AIzaSyCwJs1K57K4WlX0akHpwF_n9yO-X9hrNj4" | vercel env add GOOGLE_CIVIC_API_KEY production
+echo "AIzaSyCwJs1K57K4WlX0akHpwF_n9yO-X9hrNj4" | vercel env add NEXT_PUBLIC_GOOGLE_CIVIC_API_KEY production
 
 # Also add for preview and development
 echo "AIzaSyCwJs1K57K4WlX0akHpwF_n9yO-X9hrNj4" | vercel env add GOOGLE_CIVIC_API_KEY preview
+echo "AIzaSyCwJs1K57K4WlX0akHpwF_n9yO-X9hrNj4" | vercel env add NEXT_PUBLIC_GOOGLE_CIVIC_API_KEY preview
 echo "AIzaSyCwJs1K57K4WlX0akHpwF_n9yO-X9hrNj4" | vercel env add GOOGLE_CIVIC_API_KEY development
+echo "AIzaSyCwJs1K57K4WlX0akHpwF_n9yO-X9hrNj4" | vercel env add NEXT_PUBLIC_GOOGLE_CIVIC_API_KEY development
 
 # Deploy to production
 vercel --prod
