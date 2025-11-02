@@ -38,6 +38,27 @@ export async function GET(request: Request) {
     const response = await fetch(url);
     const data = await response.json();
 
+    // Check for API not enabled error
+    if (!response.ok && data.error?.code === 404) {
+      console.error('Google Civic API not enabled or not found:', data.error);
+      // Fallback to zip code if provided
+      if (/^\d{5}$/.test(address.trim())) {
+        return NextResponse.json({
+          success: true,
+          normalizedAddress: address.trim(),
+          zipCode: address.trim(),
+          fallback: true,
+        });
+      }
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Address validation service unavailable. Please enable the Google Civic Information API in your Google Cloud Console, or use just your zip code.'
+        },
+        { status: 503 }
+      );
+    }
+
     // Check if we got a valid response with normalized address data
     if (response.ok && data.normalizedInput) {
       // Extract normalized address from response
