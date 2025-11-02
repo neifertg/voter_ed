@@ -9,6 +9,10 @@ const VALID_ZIP_CODES = [
   '20147', '20148', '20164', '20165', // Loudoun County, VA
   '28092', '28090', // Lincoln County, NC
   '84003', '84005', '84043', // Lehi, UT
+  '77449', '77450', '77493', // Katy, TX
+  '08204', '08210', '08260', // Cape May County, NJ
+  '67002', // Andover, KS
+  '49614', // Bear Lake, MI
 ];
 
 export default function ZipCodePage() {
@@ -32,7 +36,7 @@ export default function ZipCodePage() {
     // Check if zip code is in our coverage area
     if (!VALID_ZIP_CODES.includes(zipCode)) {
       setError(
-        'Sorry, VoterEd is currently only available in Loudoun County, VA, Lincoln County, NC, and Lehi, UT. Check back soon for expanded coverage!'
+        'Sorry, VoterEd is not yet available in your area. Currently serving: Loudoun County VA, Lincoln County NC, Lehi UT, Katy TX, Cape May County NJ, Andover KS, and Bear Lake MI. Check back soon for expanded coverage!'
       );
       setIsLoading(false);
       return;
@@ -148,7 +152,7 @@ export default function ZipCodePage() {
               <h3 className="font-semibold text-slate-900 mb-3">
                 Currently Available In:
               </h3>
-              <ul className="space-y-2 text-slate-600">
+              <ul className="grid grid-cols-1 md:grid-cols-2 gap-2 text-slate-600 text-sm">
                 <li className="flex items-start gap-2">
                   <svg
                     className="w-5 h-5 text-patriot-blue-700 mt-0.5 flex-shrink-0"
@@ -190,6 +194,62 @@ export default function ZipCodePage() {
                     />
                   </svg>
                   Lehi, Utah
+                </li>
+                <li className="flex items-start gap-2">
+                  <svg
+                    className="w-5 h-5 text-patriot-blue-700 mt-0.5 flex-shrink-0"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                  Katy, Texas
+                </li>
+                <li className="flex items-start gap-2">
+                  <svg
+                    className="w-5 h-5 text-patriot-blue-700 mt-0.5 flex-shrink-0"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                  Cape May County, New Jersey
+                </li>
+                <li className="flex items-start gap-2">
+                  <svg
+                    className="w-5 h-5 text-patriot-blue-700 mt-0.5 flex-shrink-0"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                  Andover, Kansas
+                </li>
+                <li className="flex items-start gap-2">
+                  <svg
+                    className="w-5 h-5 text-patriot-blue-700 mt-0.5 flex-shrink-0"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                  Bear Lake, Michigan
                 </li>
               </ul>
             </div>

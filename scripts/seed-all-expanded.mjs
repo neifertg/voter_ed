@@ -6,6 +6,10 @@
  * - Loudoun County, VA
  * - Lincoln County, NC
  * - Lehi, UT
+ * - Katy, TX
+ * - Cape May County, NJ
+ * - Andover, KS
+ * - Bear Lake, MI
  */
 
 import { createClient } from '@supabase/supabase-js';
@@ -35,8 +39,39 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey);
 const seedFiles = [
   { name: 'Loudoun County Expanded', file: 'seed-data-loudoun-expanded.sql' },
   { name: 'Lincoln County Expanded', file: 'seed-data-lincoln-expanded.sql' },
-  { name: 'Lehi Expanded', file: 'seed-data-lehi-expanded.sql' }
+  { name: 'Lehi Expanded', file: 'seed-data-lehi-expanded.sql' },
+  { name: 'Katy TX', file: 'seed-data-katy-tx.sql' },
+  { name: 'Cape May County NJ', file: 'seed-data-capemay-nj.sql' },
+  { name: 'Andover KS', file: 'seed-data-andover-ks.sql' },
+  { name: 'Bear Lake MI', file: 'seed-data-bearlake-mi.sql' }
 ];
+
+async function parseSourceInsert(statement) {
+  const sourceMatches = statement.matchAll(/\(\s*'([^']+)',\s*'([^']+)',\s*'([^']+)',\s*'([^']+)',\s*(\d+),\s*'([^']+)'\s*\)/g);
+
+  const results = [];
+  for (const match of sourceMatches) {
+    const [, id, name, url, source_type, credibility_score, bias_rating] = match;
+
+    const { error } = await supabase.from('sources').insert({
+      id,
+      name,
+      url,
+      source_type,
+      credibility_score: parseInt(credibility_score),
+      bias_rating
+    });
+
+    if (error && !error.message.includes('duplicate')) {
+      results.push({ success: false, name, error: error.message });
+    } else if (!error) {
+      results.push({ success: true, name });
+    } else {
+      results.push({ success: true, name, skipped: true });
+    }
+  }
+  return results;
+}
 
 async function parseCandidateInsert(statement) {
   const candidateMatches = statement.matchAll(/\(\s*'([^']+)',\s*'([^']+)',\s*'([^']+)',\s*'([^']+)',\s*'([^']+)',\s*ARRAY\[([^\]]+)\]\s*\)/g);
@@ -123,7 +158,18 @@ async function seedFile(fileName, displayName) {
 
       console.log(`⏳ Processing ${tableName}...`);
 
-      if (tableName === 'candidates') {
+      if (tableName === 'sources') {
+        const results = await parseSourceInsert(statement);
+        for (const result of results) {
+          if (result.success && !result.skipped) {
+            console.log(`  ✓ Inserted source: ${result.name}`);
+          } else if (result.skipped) {
+            console.log(`  ℹ️  Source already exists: ${result.name}`);
+          } else {
+            console.error(`  ⚠️  Warning for source "${result.name}":`, result.error);
+          }
+        }
+      } else if (tableName === 'candidates') {
         const results = await parseCandidateInsert(statement);
         for (const result of results) {
           if (result.success && !result.skipped) {
@@ -194,12 +240,17 @@ async function seedAllData() {
   console.log(`   • Loudoun County, VA (20147, 20148, 20164, 20165)`);
   console.log(`   • Lincoln County, NC (28092, 28090)`);
   console.log(`   • Lehi, UT (84003, 84005, 84043)`);
+  console.log(`   • Katy, TX (77449, 77450, 77493)`);
+  console.log(`   • Cape May County, NJ (08204, 08210, 08260)`);
+  console.log(`   • Andover, KS (67002)`);
+  console.log(`   • Bear Lake, MI (49614)`);
   console.log(`\n🏛️  Offices Covered:`);
-  console.log(`   • County/City Supervisors/Commissioners`);
+  console.log(`   • City/Township/Village Councils`);
+  console.log(`   • County Commissioners/Freeholders`);
   console.log(`   • School Boards`);
-  console.log(`   • State House/Delegates`);
+  console.log(`   • State House/Assembly/Delegates`);
   console.log(`   • State Senate`);
-  console.log(`   • Mayor (Lehi)`);
+  console.log(`   • Mayors`);
 }
 
 seedAllData().catch(error => {
