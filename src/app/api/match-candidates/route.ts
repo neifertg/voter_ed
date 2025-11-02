@@ -9,6 +9,7 @@ interface UserResponse {
 }
 
 interface CandidatePosition {
+  candidate_id: string;
   issue_id: string;
   position: number;
 }

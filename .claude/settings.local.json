@@ -9,7 +9,8 @@
       "Bash(taskkill //F //PID 20660)",
       "Bash(node scripts/create-issues.mjs:*)",
       "Bash(vercel --prod:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(npm run build:*)"
     ],
     "deny": [],
     "ask": []
