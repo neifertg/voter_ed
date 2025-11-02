@@ -7,10 +7,12 @@ Your hybrid system is ready to deploy! Here's what you need to do:
 Your `.env.local` file now has:
 ```
 GOOGLE_CIVIC_API_KEY=AIzaSyCwJs1K57K4WlX0akHpwF_n9yO-X9hrNj4
-NEXT_PUBLIC_GOOGLE_CIVIC_API_KEY=AIzaSyCwJs1K57K4WlX0akHpwF_n9yO-X9hrNj4
+NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=AIzaSyDJkYpyWLLncnGB-kc1ec-uESwmkN3E408
 ```
 
-Note: The same API key is used for both server-side and client-side operations. The `NEXT_PUBLIC_` prefix makes it available to the browser for the Google Places Autocomplete feature.
+Note: You have two separate API keys:
+- `GOOGLE_CIVIC_API_KEY` - Server-side only, for fetching candidate/election data
+- `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` - Client-side, for Google Places Autocomplete (the `NEXT_PUBLIC_` prefix makes it available in the browser)
 
 ## 🚀 Deploy to Vercel
 
@@ -21,14 +23,14 @@ Note: The same API key is used for both server-side and client-side operations. 
 3. Go to **Settings** → **Environment Variables**
 4. Click **Add New** and add BOTH variables:
 
-   **First variable:**
+   **First variable (Google Civic API):**
    - **Name**: `GOOGLE_CIVIC_API_KEY`
    - **Value**: `AIzaSyCwJs1K57K4WlX0akHpwF_n9yO-X9hrNj4`
    - **Environment**: Select "Production", "Preview", and "Development"
 
-   **Second variable:**
-   - **Name**: `NEXT_PUBLIC_GOOGLE_CIVIC_API_KEY`
-   - **Value**: `AIzaSyCwJs1K57K4WlX0akHpwF_n9yO-X9hrNj4`
+   **Second variable (Google Maps API):**
+   - **Name**: `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`
+   - **Value**: `AIzaSyDJkYpyWLLncnGB-kc1ec-uESwmkN3E408`
    - **Environment**: Select "Production", "Preview", and "Development"
 
 5. Click **Save** for both
@@ -42,13 +44,13 @@ cd "C:\Users\Seth Neifert\Documents\GitHub\VoterEd"
 
 # Set the environment variables (copy/paste the whole commands)
 echo "AIzaSyCwJs1K57K4WlX0akHpwF_n9yO-X9hrNj4" | vercel env add GOOGLE_CIVIC_API_KEY production
-echo "AIzaSyCwJs1K57K4WlX0akHpwF_n9yO-X9hrNj4" | vercel env add NEXT_PUBLIC_GOOGLE_CIVIC_API_KEY production
+echo "AIzaSyDJkYpyWLLncnGB-kc1ec-uESwmkN3E408" | vercel env add NEXT_PUBLIC_GOOGLE_MAPS_API_KEY production
 
 # Also add for preview and development
 echo "AIzaSyCwJs1K57K4WlX0akHpwF_n9yO-X9hrNj4" | vercel env add GOOGLE_CIVIC_API_KEY preview
-echo "AIzaSyCwJs1K57K4WlX0akHpwF_n9yO-X9hrNj4" | vercel env add NEXT_PUBLIC_GOOGLE_CIVIC_API_KEY preview
+echo "AIzaSyDJkYpyWLLncnGB-kc1ec-uESwmkN3E408" | vercel env add NEXT_PUBLIC_GOOGLE_MAPS_API_KEY preview
 echo "AIzaSyCwJs1K57K4WlX0akHpwF_n9yO-X9hrNj4" | vercel env add GOOGLE_CIVIC_API_KEY development
-echo "AIzaSyCwJs1K57K4WlX0akHpwF_n9yO-X9hrNj4" | vercel env add NEXT_PUBLIC_GOOGLE_CIVIC_API_KEY development
+echo "AIzaSyDJkYpyWLLncnGB-kc1ec-uESwmkN3E408" | vercel env add NEXT_PUBLIC_GOOGLE_MAPS_API_KEY development
 
 # Deploy to production
 vercel --prod
