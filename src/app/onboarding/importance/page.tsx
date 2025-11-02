@@ -54,7 +54,9 @@ export default function ImportancePage() {
 
   const fetchIssues = async () => {
     try {
-      const response = await fetch('/api/issues');
+      const zipCode = localStorage.getItem('votered_zip_code');
+      const url = zipCode ? `/api/issues?zipCode=${zipCode}` : '/api/issues';
+      const response = await fetch(url);
       const data = await response.json();
 
       if (data.success && data.issues) {

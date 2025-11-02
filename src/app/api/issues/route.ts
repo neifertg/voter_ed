@@ -1,12 +1,30 @@
 import { supabase } from '@/lib/supabase';
 import { NextResponse } from 'next/server';
+import { getStateFromZip } from '@/lib/zipToState';
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const { data: issues, error } = await supabase
+    const { searchParams } = new URL(request.url);
+    const zipCode = searchParams.get('zipCode');
+
+    let query = supabase
       .from('issues')
-      .select('*')
+      .select(`
+        *,
+        explanations:issue_explanations(*)
+      `)
       .order('created_at', { ascending: true });
+
+    // If zip code provided, filter by location
+    if (zipCode) {
+      const state = getStateFromZip(zipCode);
+      if (state) {
+        // Get issues that include this state in their locations array
+        query = query.contains('locations', [state]);
+      }
+    }
+
+    const { data: issues, error } = await query;
 
     if (error) {
       return NextResponse.json(
